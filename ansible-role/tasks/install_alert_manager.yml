@@ -1,0 +1,55 @@
+    - name: Update package cache
+      apt:
+        update_cache: yes
+
+    - name: Upgrade packages
+      apt:
+        upgrade: dist
+        autoremove: yes
+        autoclean: yes
+ 
+
+    - name: Download and install Alert manager
+      get_url:
+        url: https://github.com/prometheus/alertmanager/releases/download/v0.11.0/alertmanager-0.11.0.linux-amd64.tar.gz
+        dest: /tmp/
+
+
+    - name: Extract the Alert manager archive
+      unarchive:
+       src: /tmp/alertmanager-0.11.0.linux-amd64.tar.gz
+       dest: /tmp/
+       remote_src: yes
+
+    - name: Move the alertmanager folder  to /usr/local/bin
+      command:  mv /tmp/alertmanager-0.11.0.linux-amd64/alertmanager /usr/local/bin/
+
+
+    - name: Create /etc/alertmanager/ directories if they do not exist
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      with_items:
+        - /etc/alertmanager/  
+      when: not item is exists
+
+ 
+    - name: Create a configuration  file ( /etc/alertmanager/alertmanager.yml )
+      template:
+        src: templates/alertmanager.yml.j2
+        dest: /etc/alertmanager/alertmanager.yml
+
+    
+
+    - name: Create a systemd unit file ( /etc/systemd/system/alertmanager.service )
+      template:
+        src: templates/alertmanager.service.j2
+        dest: /etc/systemd/system/alertmanager.service
+
+
+        
+    - name: Start node_exporter service
+      shell: systemctl daemon-reload &&  systemctl start alertmanager  && systemctl enable alertmanager && systemctl status alertmanager
+
+        

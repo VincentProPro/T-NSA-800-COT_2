@@ -1,0 +1,32 @@
+    - name: Update package cache
+      apt:
+        update_cache: yes
+
+    - name: Upgrade packages
+      apt:
+        upgrade: dist
+        autoremove: yes
+        autoclean: yes
+ 
+
+    - name: Download  Grafana.deb
+      get_url:
+        url: https://s3-us-west-2.amazonaws.com/grafana-releases/release/grafana_5.0.4_amd64.deb
+        dest: /tmp/
+
+    - name: Install adduser and libfontconfig
+      apt:
+        name:
+          - adduser
+          - libfontconfig1
+        state: present
+
+
+    - name: Install Grafana package
+      apt:
+        deb: /tmp/grafana_5.0.4_amd64.deb
+        state: present
+    
+    
+    - name: Start node_exporter service
+      shell: systemctl daemon-reload && sudo systemctl enable grafana-server && sudo systemctl start grafana-server.service     

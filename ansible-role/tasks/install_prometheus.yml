@@ -1,0 +1,99 @@
+    - name: Update package cache
+      apt:
+        update_cache: yes
+
+    - name: Upgrade packages
+      apt:
+        upgrade: dist
+        autoremove: yes
+        autoclean: yes
+ 
+
+    - name: Download and install Prometheus
+      get_url:
+        url: https://github.com/prometheus/prometheus/releases/download/v2.1.0/prometheus-2.1.0.linux-amd64.tar.gz
+        dest: /tmp/
+
+
+    - name: Extract the Prometheus archive
+      unarchive:
+       src: /tmp/prometheus-2.1.0.linux-amd64.tar.gz
+       dest: /tmp/
+       remote_src: yes
+
+    - name: Move the Prometheus to /usr/local/bin
+      command:  mv /tmp/prometheus-2.1.0.linux-amd64/prometheus /tmp/prometheus-2.1.0.linux-amd64/promtool /usr/local/bin
+
+
+    - name: Create Prometheus directories if they do not exist
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+        owner: prometheus
+        group: prometheus
+      with_items:
+        - /etc/prometheus
+        - /var/lib/prometheus
+      when: not item is exists
+
+
+    - name: Remove existing files in /etc/prometheus/consoles
+      file:
+        path: /etc/prometheus/consoles
+        state: absent
+
+
+    - name: Remove existing files in /etc/prometheus/console_libraries
+      file:
+        path: /etc/prometheus/console_libraries
+        state: absent    
+ 
+
+    - name: Move the configuration files (consoles & console_libraries )  to the directory  (/etc/prometheus)
+      command:  mv /tmp/prometheus-2.1.0.linux-amd64/consoles /tmp/prometheus-2.1.0.linux-amd64/console_libraries /etc/prometheus
+ 
+    - name: Delete the leftover files
+      file:
+        path: /tmp/prometheus-2.1.0.linux-amd64*
+        state: absent
+        force: yes
+
+
+
+    - name: Create a configuration  unit file ( /etc/prometheus/prometheus.yml )
+      template:
+        src: templates/prometheus.yml.j2
+        dest: /etc/prometheus/prometheus.yml
+
+    - name: Check if prometheus user exists
+      shell: id -u prometheus
+      register: prometheus_user_id
+      ignore_errors: true
+
+    - name: Create prometheus user if it does not exist
+      user:
+        name: prometheus
+        system: yes
+        shell: /bin/false
+        state: present
+      when: prometheus_user_id.rc != 0    
+
+
+    - name: Change ownership of /etc/prometheus and /var/lib/prometheus
+      command: chown -R prometheus:prometheus  /etc/prometheus /var/lib/prometheus
+
+    - name: Create a systemd unit file ( /etc/systemd/system/prometheus.service )
+      template:
+        src: templates/prometheus.service.j2
+        dest: /etc/systemd/system/prometheus.service
+
+        
+    - name: Reload Systemd daemon
+      shell:  systemctl daemon-reload
+  
+    - name: Enable prometheus service
+      shell:  systemctl enable prometheus
+  
+    - name: Start node_exporter service
+      shell:  systemctl start prometheus    

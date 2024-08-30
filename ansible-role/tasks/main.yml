@@ -1,0 +1,22 @@
+---
+# tasks file for promo-role
+- name: Installing Node Exporter
+  become : true
+  import_tasks: install_node_exporter.yml
+
+
+- name: Installing Promotheus
+  become : true
+  import_tasks: install_prometheus.yml 
+
+
+- name: Installing Grafana
+  become : true
+  import_tasks: install_grafana.yml  
+
+- name: Installing alertmanager
+  become : true
+  import_tasks:   install_alert_manager.yml 
+
+
+

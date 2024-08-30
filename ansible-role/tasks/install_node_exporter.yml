@@ -1,0 +1,72 @@
+    - name: Update package cache
+      apt:
+        update_cache: yes
+
+    - name: Upgrade packages
+      apt:
+        upgrade: dist
+        autoremove: yes
+        autoclean: yes
+
+
+    - name: Required extensions
+      apt:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - tar  
+        - gzip
+        - build-essential
+        - zip 
+        - unzip   
+
+    - name: Download the Node Exporter
+      get_url:
+        url: https://github.com/prometheus/node_exporter/releases/download/v0.15.2/node_exporter-0.15.2.linux-amd64.tar.gz
+        dest: /tmp/
+
+
+    - name: Extract the downloaded archive
+      unarchive:
+       src: /tmp/node_exporter-0.15.2.linux-amd64.tar.gz
+       dest: /tmp/
+       remote_src: yes
+
+    - name: Move the node_exporter binary to /usr/local/bin
+      command:  mv /tmp/node_exporter-0.15.2.linux-amd64/node_exporter /usr/local/bin
+
+    - name: Remove node_exporter directory
+      file:
+        path: /tmp/node_exporter-0.15.2.linux-amd64*
+        state: absent
+        force: yes
+
+
+    - name: Check if node_exporter user exists
+      shell: id -u node_exporter
+      register: node_exporter_user_id
+      ignore_errors: true
+
+    - name: Create node_exporter user if it does not exist
+      user:
+        name: node_exporter
+        system: yes
+        shell: /bin/false
+        state: present
+      when: node_exporter_user_id.rc != 0
+
+
+    - name: Create a systemd unit file ( /etc/systemd/system/node_exporter.service )
+      template:
+        src: templates/node_exporter.service.j2
+        dest: /etc/systemd/system/node_exporter.service
+
+    
+    - name: Reload Systemd daemon
+      shell: sudo systemctl daemon-reload
+  
+    - name: Enable node_exporter service
+      shell: sudo systemctl enable node_exporter
+  
+    - name: Start node_exporter service
+      shell: sudo systemctl start node_exporter
